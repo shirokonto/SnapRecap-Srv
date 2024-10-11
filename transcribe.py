@@ -4,9 +4,7 @@ import os
 import ctypes
 from faster_whisper import WhisperModel
 
-input_video = ""
-
-# Function to check if cuDNN DLL is loaded
+# Check if cuDNN DLL is loaded
 def check_cudnn_dll():
     dll_ops_path = os.path.join(os.environ['CUDA_PATH'], 'bin', 'cudnn_ops_infer64_8.dll')
     dll_cnn_path = os.path.join(os.environ['CUDA_PATH'], 'bin', 'cudnn_cnn_infer64_8.dll')
@@ -23,49 +21,30 @@ def check_cudnn_dll():
     except Exception as e:
         print(f"Failed to load cuDNN DLL: {e}")
 
-# Function to extract audio from a given video file
+# Extract audio from a given video file
 def extract_audio(input_video):
-    global input_video_name
-
     input_video_name = input_video.replace(".mp4", "")
     extracted_audio = f"audio-{input_video_name}.wav"
     stream = ffmpeg.input(input_video)
     stream = ffmpeg.output(stream, extracted_audio)
     ffmpeg.run(stream, overwrite_output=True)
-    return extracted_audio
+    return extracted_audio, input_video_name
 
-# Function to transcribe audio using Whisper
+# Transcribe audio using Whisper
 def transcribe(audio):
     model = WhisperModel("small", device="cuda")
     result = model.transcribe(audio)
 
-    # Check if result contains both segments and language as separate elements.
-    segments = list(result[0])  # The segments are usually the first element.
-    info = result[1]  # Info (which contains the language) is the second element if available.
+    segments = list(result[0])
 
-    # Make sure to extract the language correctly.
-    language = info.get('language', 'unknown') if isinstance(info, dict) else "unknown"
+    info = result[1]
+    language = info.language if hasattr(info, 'language') else 'unknown'
 
-    transcription = "\n".join(
-        f"[{segment.start:.2f}s -> {segment.end:.2f}s] {segment.text}" for segment in segments
-    )
     return language, segments
 
-    #model = WhisperModel("small", device="cuda")
-    #segments, info = model.transcribe(audio)
-    #language = info[0]
-    #print("Transcription language:", language)
-    #segments = list(segments)
-    #transcription = "\n".join(
-    #    f"[{segment.start:.2f}s -> {segment.end:.2f}s] {segment.text}" for segment in segments
-    #)
-    # not returning correct issue
-    #return transcription
-
-# converting transcription segments start and end time displayed as
+# Convert transcription segments start and end time displayed as
 # 00:00:10,500 --> 00:00:15,000  in seconds to HH:MM:SS, sss
 def format_time(seconds):
-
     hours = math.floor(seconds / 3600)
     seconds %= 3600
     minutes = math.floor(seconds / 60)
@@ -78,13 +57,9 @@ def format_time(seconds):
 
 # Takes the language detected of the audio and transcription segments
 # and creates a subtitle file in SRT form
-def generate_subtitle_file(language, segments):
-    global input_video_name
-
-    #     language, segments = transcribe(audio=audio_file)
-    input_video_name = input_video.replace(".mp4", "")
-
-    subtitle_file = f"sub-{input_video_name}.{language}.srt"
+def generate_subtitle_file(input_video_name, language, segments):
+    output_video_name = input_video_name.replace("temp_", "")
+    subtitle_file = f"sub-{output_video_name}.{language}.srt"
     text = ""
     for index, segment in enumerate(segments):
         segment_start = format_time(segment.start)
@@ -105,12 +80,11 @@ def process_video(input_video):
 
     check_cudnn_dll()
 
-    audio_file = extract_audio(input_video)
-
+    audio_file, input_video_name = extract_audio(input_video)
     language, segments = transcribe(audio=audio_file)
-    # ValueError: too many values to unpack (expected 2)
 
     subtitle_file = generate_subtitle_file(
+        input_video_name=input_video_name,
         language=language,
         segments=segments
     )
