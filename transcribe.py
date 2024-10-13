@@ -6,7 +6,7 @@ import ffmpeg
 from faster_whisper import WhisperModel
 
 
-# Check if cuDNN DLL is loaded
+# Checks if cuDNN DLL is loaded
 def check_cudnn_dll():
     dll_ops_path = os.path.join(
         os.environ["CUDA_PATH"], "bin", "cudnn_ops_infer64_8.dll"
@@ -28,7 +28,7 @@ def check_cudnn_dll():
         print(f"Failed to load cuDNN DLL: {e}")
 
 
-# Extract audio from a given video file
+# Extracts audio from a given video file
 def extract_audio(input_video, output_folder):
     print(f"Extracting audio from {input_video}")
     input_video_name = input_video.replace(".mp4", "")
@@ -39,7 +39,7 @@ def extract_audio(input_video, output_folder):
     return extracted_audio
 
 
-# Transcribe audio using Whisper
+# Transcribes audio using Whisper
 def transcribe(audio):
     model = WhisperModel("small", device="cuda")
     result = model.transcribe(audio)
@@ -52,7 +52,7 @@ def transcribe(audio):
     return language, segments
 
 
-# Convert transcription segments start and end time displayed as
+# Converts transcription segments start and end time displayed as
 # 00:00:10,500 --> 00:00:15,000  in seconds to HH:MM:SS, sss
 def format_time(seconds):
     hours = math.floor(seconds / 3600)
