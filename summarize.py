@@ -22,14 +22,14 @@ def summarize_srt(file_path):
 
     # Prepares input prompt for summarization
     prompt = (
-        f"Rewrite the following text in a formal, third-person style, avoiding any use of 'you' or 'I'. "
-        f"Use an impersonal and professional tone. Summarize the key points without any informal language or personal "
-        f"references:\n\n{subtitle_text}"
+        f"Rewrite the following text in a formal, third-person style, avoiding any use of 'you' or 'I' and use "
+        f"an impersonal and professional tone, divide the following text into meaningful sections, and provide a formal "
+        f"and concise summary for each section :\n\n{subtitle_text}"
     )
-    # f"Divide the following text into meaningful sections, and provide a formal and concise summary for each section. "
-    #         f"Each section heading should clearly reflect the main topic or concept discussed. "
-    #         f"Ensure the language is formal, avoid using 'you', and write in an impersonal style. "
-    #         f"Summarize the following text:\n\n{subtitle_text}"
+    """prompt = (
+        f"Summarize the following content by dividing it into meaningful sections. "
+        f"For each section, provide a clear heading and a concise summary in a formal and impersonal tone:\n\n{subtitle_text}"
+    )"""
 
     # Splits content in chunks since BART models maximal input size is 1024
     max_chunk_size = 1024  # BART's max input size
@@ -48,7 +48,3 @@ def summarize_srt(file_path):
     print(f"Summary: {summary}")
 
     return summary
-
-
-# srt_file = "output_folder/sub-your_video.en.srt"
-# summary = summarize_srt(srt_file)
