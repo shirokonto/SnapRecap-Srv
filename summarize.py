@@ -1,50 +1,103 @@
 import torch
 from transformers import pipeline
 
-# Loads summarization pipeline
+# Load summarization pipeline
 device = 0 if torch.cuda.is_available() else -1  # Use GPU if available
 summarizer = pipeline("summarization", model="facebook/bart-large-cnn", device=device)
 
 
-def summarize_srt(file_path):
-    with open(file_path, "r") as file:
-        content = file.readlines()
+def detect_section_headers_one(transcription_file):
+    # TODO replace with header_detector
+    with open(
+        transcription_file, "r"
+    ) as file:  # TODO dont read just pass subtitle_content?
+        lines = file.readlines()
 
-    # TODO adapt later to include timestamps
-    # Removes timestamps and numbers and combines lines into text block
-    subtitle_text = " ".join(
-        [
-            line.strip()
-            for line in content
-            if not line.strip().isdigit() and "-->" not in line
-        ]
-    )
+    sections = []
+    current_section = {"title": None, "content": ""}
 
-    # Prepares input prompt for summarization
-    prompt = (
-        f"Rewrite the following text in a formal, third-person style, avoiding any use of 'you' or 'I' and use "
-        f"an impersonal and professional tone, divide the following text into meaningful sections, and provide a formal "
-        f"and concise summary for each section :\n\n{subtitle_text}"
-    )
-    """prompt = (
-        f"Summarize the following content by dividing it into meaningful sections. "
-        f"For each section, provide a clear heading and a concise summary in a formal and impersonal tone:\n\n{subtitle_text}"
-    )"""
-
-    # Splits content in chunks since BART models maximal input size is 1024
-    max_chunk_size = 1024  # BART's max input size
-    chunks = [
-        prompt[i : i + max_chunk_size] for i in range(0, len(prompt), max_chunk_size)
+    # Keywords indicate new sections
+    section_keywords = [
+        "What is",
+        "How does",
+        "Introduction",
+        "Overview",
+        "Conclusion",
+        "conclusion",
+        "Summary",
+        "Getting started",
     ]
+    # TODO if sections are given use them
+    # TODO if keywords are given use them - else keyword extraction and search for similar ones
+    # TODO exclude stuff like "What is up"
 
-    # TODO gets weird summary
-    # Generates summary for each chunk and combines them
-    summary = ""
-    for chunk in chunks:
-        result = summarizer(chunk, max_length=130, min_length=30, do_sample=False)
-        summary += result[0]["summary_text"] + " "
-    # summary = summarizer(prompt, max_length=150, min_length=30, do_sample=False)
+    # Process each line, skip timestamp lines
+    for line in lines:
+        stripped_line = line.strip()
+        if "-->" in stripped_line:
+            continue
 
-    print(f"Summary: {summary}")
+        # Check if line matches any section keyword
+        if any(keyword in stripped_line for keyword in section_keywords):
+            # Save the current section if it exists
+            if current_section["title"]:
+                sections.append(current_section)
 
+            # Start a new section
+            current_section = {"title": stripped_line, "content": ""}
+
+        # Add content to the current section
+        elif current_section["title"]:
+            current_section["content"] += stripped_line + " "
+
+    # Append the last section
+    if current_section["title"]:
+        sections.append(current_section)
+
+    return sections
+
+
+def summarize_section(section):
+    """
+    Summarizes the content of a given section using summarization pipeline.
+    """
+    content = section["content"]
+    try:
+        summary = summarizer(content, max_length=130, min_length=30, do_sample=False)[
+            0
+        ]["summary_text"]
+    except Exception as e:
+        summary = f"Error summarizing section: {str(e)}"
+    return {"title": section["title"], "summary": summary}
+
+
+def process_transcription(transcription_file):
+    """
+    Main function to process the transcription file. Detects sections, splits the text,
+    and summarizes each section.
+    """
+    # Detect sections in the transcription
+    # sections = detect_section_headers(transcription_file)
+    sections = detect_section_headers_one(transcription_file)
+
+    print(f"Results - Sections: {sections}")
+
+    # Summarize each section
+    summarized_sections = []
+    for section in sections:
+        summarized_section = summarize_section(section)
+        summarized_sections.append(summarized_section)
+
+    # Combine all summaries
+    summary = "\n\n".join(
+        f"Section: {s['title']}\nSummary: {s['summary']}" for s in summarized_sections
+    )
+
+    print(summary)
     return summary
+
+
+# Example usage
+if __name__ == "__main__":
+    transcription_file = "example_transcription.srt"
+    process_transcription(transcription_file)

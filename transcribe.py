@@ -1,6 +1,7 @@
 import ctypes
 import math
 import os
+import re
 
 import ffmpeg
 from faster_whisper import WhisperModel
@@ -87,6 +88,26 @@ def generate_subtitle_file(input_video_name, output_folder, language, segments):
     f.close()
 
     return subtitle_file
+
+
+def split_transcription(transcription_file):
+    # Regex to extract timestamps and text
+    pattern = r"(\d+)\s+([\d:,]+) --> ([\d:,]+)\s+(.*?)(?=\n\d+\s+[\d:,]+ -->|\Z)"
+    matches = re.findall(pattern, transcription_file, re.DOTALL)
+
+    transcription_chunks = []
+    for match in matches:
+        index, start_time, end_time, text = match
+        transcription_chunks.append(
+            {
+                "index": int(index),
+                "start_time": start_time.strip(),
+                "end_time": end_time.strip(),
+                "text": text.strip().replace("\n", " "),
+            }
+        )
+
+    return transcription_chunks
 
 
 # Main function to handle video transcription
