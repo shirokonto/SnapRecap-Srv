@@ -64,26 +64,30 @@ async def transcribe_video(file: UploadFile = File(...), sections: str = Form(..
 
     return {
         "file_name": os.path.basename(transcription_file),
-        "transcription": subtitle_content,
+        "transcription": transcription_chunks,
         "summary": summary,
     }
 
 
 @app.post("/postonconfluence")
 async def create_confluence_page(
-    parent_id: str = Form(...), title: str = Form(...), content: str = Form(...)
+    parent_id: str = Form(...),
+    title: str = Form(...),
+    content: str = Form(...),
+    space_key: str = Form(...),
+    api_token: str = Form(...),
 ):
     try:
         response = requests.post(
             f"{CONFLUENCE_BASE_URL}/rest/api/content",
             headers={
-                "Authorization": f"Bearer {CONFLUENCE_TOKEN}",
+                "Authorization": f"Bearer {api_token}",
                 "Content-Type": "application/json",
             },
             json={
                 "type": "page",
                 "title": title,
-                "space": {"key": CONFLUENCE_SPACE_KEY},
+                "space": {"key": space_key},
                 "ancestors": [{"id": parent_id}],
                 "body": {
                     "storage": {
@@ -113,36 +117,43 @@ async def update_confluence_page(
     title: str = Form(...),
     content: str = Form(...),
     page_id: str = Form(...),
+    space_key: str = Form(...),
+    api_token: str = Form(...),
 ):
     try:
+        # Get current page version to increment it
         response = requests.get(
             f"{CONFLUENCE_BASE_URL}/rest/api/content/{page_id}",
             headers={
-                "Authorization": f"Bearer {CONFLUENCE_TOKEN}",
+                "Authorization": f"Bearer {api_token}",
             },
         )
         if response.ok:
             page = response.json()
             version = page["version"]["number"]
+            current_title = page["title"]
         else:
             raise HTTPException(
                 status_code=response.status_code,
                 detail=f"Failed to get page: {response.text}",
             )
 
+        # To avoid 422 use current title if new title is the same or use new if it is different.
+        final_title = (
+            title if title and title != "" and title != current_title else current_title
+        )
+
         response = requests.put(
             f"{CONFLUENCE_BASE_URL}/rest/api/content/{page_id}",
             headers={
-                "Authorization": f"Bearer {CONFLUENCE_TOKEN}",
+                "Authorization": f"Bearer {api_token}",
                 "Content-Type": "application/json",
             },
             json={
-                "version": {
-                    "number": version + 1,
-                },
-                "title": title,
+                "version": {"number": version + 1},
+                "title": final_title,
                 "type": "page",
-                "space": {"key": CONFLUENCE_SPACE_KEY},
+                "space": {"key": space_key},
                 "body": {
                     "storage": {
                         "value": content,
