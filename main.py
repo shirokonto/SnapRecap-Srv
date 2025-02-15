@@ -1,18 +1,22 @@
-import time
-import math
-import ffmpeg
-import os
 import ctypes
+import math
+import os
 
+import ffmpeg
 from faster_whisper import WhisperModel
 
 input_video = "input.mp4"
 input_video_name = input_video.replace(".mp4", "")
 
+
 # Check if cuDNN ops and cnn DLL can be loaded
 def check_cudnn_dll():
-    dll_ops_path = os.path.join(os.environ['CUDA_PATH'], 'bin', 'cudnn_ops_infer64_8.dll')
-    dll_cnn_path = os.path.join(os.environ['CUDA_PATH'], 'bin', 'cudnn_cnn_infer64_8.dll')
+    dll_ops_path = os.path.join(
+        os.environ["CUDA_PATH"], "bin", "cudnn_ops_infer64_8.dll"
+    )
+    dll_cnn_path = os.path.join(
+        os.environ["CUDA_PATH"], "bin", "cudnn_cnn_infer64_8.dll"
+    )
 
     try:
         ctypes.WinDLL(dll_ops_path)
@@ -26,6 +30,7 @@ def check_cudnn_dll():
     except Exception as e:
         print(f"Failed to load cuDNN DLL: {e}")
 
+
 # extracts audio from video
 def extract_audio():
     extracted_audio = f"audio-{input_video_name}.wav"
@@ -33,6 +38,7 @@ def extract_audio():
     stream = ffmpeg.output(stream, extracted_audio)
     ffmpeg.run(stream, overwrite_output=True)
     return extracted_audio
+
 
 # Transcribes audio by creating instance of whisper model small and CUDA (GPU) for faster transcription
 def transcribe(audio):
@@ -43,9 +49,9 @@ def transcribe(audio):
     segments = list(segments)
     for segment in segments:
         # print(segment)
-        print("[%.2fs -> %.2fs] %s" %
-              (segment.start, segment.end, segment.text))
+        print("[%.2fs -> %.2fs] %s" % (segment.start, segment.end, segment.text))
     return language, segments
+
 
 # converting transcription segments start and end time displayed as
 # 00:00:10,500 --> 00:00:15,000  in seconds to HH:MM:SS, sss
@@ -60,6 +66,7 @@ def format_time(seconds):
     formatted_time = f"{hours:02d}:{minutes:02d}:{seconds:01d},{milliseconds:03d}"
 
     return formatted_time
+
 
 # Takes the language detected of the audio and transcription segments
 # and creates a subtitle file in SRT form
@@ -80,15 +87,22 @@ def generate_subtitle_file(language, segments):
 
     return subtitle_file
 
+
 def run():
     check_cudnn_dll()
 
     extracted_audio = extract_audio()
     language, segments = transcribe(audio=extracted_audio)
-    subtitle_file = generate_subtitle_file(
-        language=language,
-        segments=segments
-    )
+
+    print("Transcription language", language)
+    segments = list(segments)
+    for segment in segments:
+        # print(segment)
+        print("[%.2fs -> %.2fs] %s" % (segment.start, segment.end, segment.text))
+
+    subtitle_file = generate_subtitle_file(language=language, segments=segments)
 
     # sent file to LLM to get the neccesary data
+
+
 run()
