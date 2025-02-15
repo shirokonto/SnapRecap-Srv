@@ -12,9 +12,15 @@ from transcribe import process_video, split_transcription
 
 env_path = os.path.join(".env")
 load_dotenv(dotenv_path=env_path)
-CONFLUENCE_BASE_URL = os.getenv("CONFLUENCE_BASE_URL")
 
-# fastapi dev api.py
+CONFLUENCE_BASE_URL = os.getenv("CONFLUENCE_BASE_URL")
+CONFLUENCE_PARENT_PAGE_ID = os.getenv("CONFLUENCE_PARENT_PAGE_ID")
+CONFLUENCE_SPACE_KEY = os.getenv("CONFLUENCE_SPACE_KEY")
+CONFLUENCE_TOKEN = os.getenv("CONFLUENCE_TOKEN")
+CONFLUENCE_EMAIL = os.getenv("CONFLUENCE_EMAIL")
+
+# uvicorn api:app --reload --host localhost
+# uvicorn api:app --reload --host localhost --log-level debug
 
 app = FastAPI()
 

@@ -43,8 +43,11 @@ def extract_audio(input_video, output_folder):
 # Transcribes audio using Whisper
 def transcribe(audio):
     model = WhisperModel("small", device="cuda")
+    result = model.transcribe(audio)
 
-    segments, info = model.transcribe(audio)
+    segments = list(result[0])
+
+    info = result[1]
     language = info.language if hasattr(info, "language") else "unknown"
 
     return language, segments
