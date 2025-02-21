@@ -71,33 +71,45 @@ def summarize_section(section):
     return {"title": section["title"], "summary": summary}
 
 
-def process_transcription(transcription_file):
+def process_transcription(transcription_file, sections=None):
     """
-    Main function to process the transcription file. Detects sections, splits the text,
-    and summarizes each section.
+    Main function to process the transcription file.
+    Either summarize the whole video
+    or detects sections, splits the text and summarizes each section.
     """
-    # Detect sections in the transcription
-    # sections = detect_section_headers(transcription_file)
-    sections = detect_section_headers_one(transcription_file)
+    if sections is None:
+        # Summarize the whole video
+        with open(transcription_file, "r") as file:
+            content = file.read()
+        summarized_video = summarize_section(
+            {"title": "Video Summary", "content": content}
+        )
+        summary = f"Section: {summarized_video['title']}\nSummary: {summarized_video['summary']}"
 
-    print(f"Results - Sections: {sections}")
+    else:
+        # Detect sections in the transcription
+        # sections = detect_section_headers(transcription_file)
+        sections = detect_section_headers_one(transcription_file)
 
-    # Summarize each section
-    summarized_sections = []
-    for section in sections:
-        summarized_section = summarize_section(section)
-        summarized_sections.append(summarized_section)
+        print(f"Results - Sections: {sections}")
 
-    # Combine all summaries
-    summary = "\n\n".join(
-        f"Section: {s['title']}\nSummary: {s['summary']}" for s in summarized_sections
-    )
+        # Summarize each section
+        summarized_sections = []
+        for section in sections:
+            summarized_section = summarize_section(section)
+            summarized_sections.append(summarized_section)
 
-    print(summary)
+        # Combine all summaries
+        summary = "\n\n".join(
+            f"Section: {s['title']}\nSummary: {s['summary']}"
+            for s in summarized_sections
+        )
+
+    print(f"END result: {summary}")
     return summary
 
 
 # Example usage
 if __name__ == "__main__":
-    transcription_file = "example_transcription.srt"
-    process_transcription(transcription_file)
+    transcription_test_file = "example_transcription.srt"
+    process_transcription(transcription_test_file)

@@ -65,25 +65,40 @@ def format_time(seconds):
 
 # Takes the language detected of the audio and transcription segments
 # and creates a subtitle file in SRT form
-def generate_subtitle_file(input_video_name, output_folder, language, segments):
+def generate_subtitle_file(
+    input_video_name, output_folder, language, segments, sections=None
+):
     input_video_name = input_video_name.replace("temp_", "")
     subtitle_file = os.path.join(
         output_folder, f"sub-{input_video_name}.{language}.srt"
     )
-    text = ""
+
+    subtitle_text = ""
+    full_video_text = ""
+
     for index, segment in enumerate(segments):
         segment_start = format_time(segment.start)
         segment_end = format_time(segment.end)
-        text += f"{str(index + 1)} \n"
-        text += f"{segment_start} --> {segment_end} \n"
-        text += f"{segment.text} \n"
-        text += "\n"
+        subtitle_text += f"{str(index + 1)} \n"
+        subtitle_text += f"{segment_start} --> {segment_end}\n{segment.text}\n\n"
+        subtitle_text += f"{segment.text} \n\n"
+        if sections is None:
+            full_video_text += f"{segment.text} \n"
 
-    f = open(subtitle_file, "w")
-    f.write(text)
-    f.close()
+    with open(subtitle_file, "w", encoding="utf-8") as f:
+        f.write(subtitle_text)
+        f.close()
 
-    return subtitle_file
+    full_video_text_file = None
+    if sections is None:
+        full_video_text_file = os.path.join(
+            output_folder, f"only-text-{input_video_name}.{language}.srt"
+        )
+        with open(full_video_text_file, "w", encoding="utf-8") as f:
+            f.write(full_video_text)
+            f.close()
+
+    return (subtitle_file, full_video_text_file) if sections is None else subtitle_file
 
 
 def split_transcription(transcription_file):
@@ -107,7 +122,7 @@ def split_transcription(transcription_file):
 
 
 # Main function to handle video transcription
-def process_video(input_video, output_folder):
+def process_video(input_video, output_folder, sections=None):
     check_cudnn_dll()
 
     input_video_name = os.path.splitext(os.path.basename(input_video))[0]
@@ -115,15 +130,27 @@ def process_video(input_video, output_folder):
     audio_file = extract_audio(input_video, output_folder)
     language, segments = transcribe(audio=audio_file)
 
-    subtitle_file = generate_subtitle_file(
+    result = generate_subtitle_file(
         input_video_name=input_video_name,
         output_folder=output_folder,
         language=language,
         segments=segments,
+        sections=sections,
     )
-    return subtitle_file
+
+    # If sections are given, return only the subtitle file else both subtitle and full video text file
+    if isinstance(result, tuple):
+        subtitle_file, full_video_text_file = result
+        print(
+            f"Subtitle file saved at: {subtitle_file} and full video at: {full_video_text_file}"
+        )
+        return subtitle_file, full_video_text_file
+    else:
+        subtitle_file = result
+        print(f"Subtitle file saved at: {subtitle_file}")
+        return subtitle_file
 
 
 if __name__ == "__main__":
-    input_video = "input.mp4"
-    print(process_video(input_video, os.path.join("output", "input_test.mp4")))
+    input_test_video = "input.mp4"
+    print(process_video(input_test_video, os.path.join("output", "input_test.mp4")))

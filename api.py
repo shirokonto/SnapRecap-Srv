@@ -39,23 +39,40 @@ async def transcribe_video(file: UploadFile = File(...), sections: str = Form(..
     output_folder = os.path.join("output", file.filename)
     os.makedirs(output_folder, exist_ok=True)
 
-    transcription_file = process_video(video_path, output_folder)
+    # decide if whole video or sections are given
+    section_titles = json.loads(sections)
+    print(f"Section titles: {section_titles}")
 
-    # Reads content of the subtitle file for output in UI
+    full_video_text_file = None
+    if section_titles == [""]:
+        transcription_file, full_video_text_file = process_video(
+            video_path, output_folder
+        )
+    else:
+        transcription_file = process_video(video_path, output_folder, section_titles)
+
+    # Reads content of the transcription file for output in UI
     with open(transcription_file, "r") as f:
         subtitle_content = f.read()
 
     # Removes temp video file after transcription
     os.remove(video_path)
 
-    section_titles = json.loads(sections)
-    print(f"Section titles: {section_titles}")
-
     transcription_chunks = split_transcription(subtitle_content)
-    detected_sections = detect_section_headers(transcription_chunks, section_titles)
-    print(f"header_detector: Detected sections: {detected_sections}")
 
-    summary = process_transcription(transcription_file)
+    if section_titles == [""]:
+        print(f"api: I assume a whole video since sections is empty: {section_titles}")
+        summary = process_transcription(full_video_text_file)
+    else:
+        print(
+            f"api: I assume video summarization should be split in sections: {section_titles}"
+        )
+        detected_sections = detect_section_headers(transcription_chunks, section_titles)
+        print(f"header_detector: Detected sections: {detected_sections}")
+
+        summary = process_transcription(
+            transcription_file, sections=detected_sections
+        )  # TODO don't use section titles
 
     return {
         "file_name": os.path.basename(transcription_file),
