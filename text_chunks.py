@@ -26,7 +26,7 @@ def split_text_into_chunks(document: str, max_tokens: int) -> List[str]:
 
     try:
         for sentence in nltk.sent_tokenize(document):
-            sentence_length = len(sentence.split())  # Count tokens (words)
+            sentence_length = len(sentence)  # Count characters
 
             if current_length + sentence_length < max_tokens:
                 current_chunk.append(sentence)
@@ -42,11 +42,3 @@ def split_text_into_chunks(document: str, max_tokens: int) -> List[str]:
     except Exception as e:
         logging.error(f"Error splitting text into chunks: {e}")
         return []
-
-
-# long_text = read_file(VIDEO_NAME)
-# if long_text:
-#    text_chunks = split_text_into_chunks(long_text, max_tokens=4000)
-#    logging.info(f"Text chunks: {text_chunks}")
-# else:
-#    logging.error("Error: Unable to process the text.")

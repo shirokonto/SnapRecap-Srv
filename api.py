@@ -1,5 +1,4 @@
 import json
-import logging
 import os
 
 import requests
@@ -8,8 +7,8 @@ from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from header_detector import detect_section_headers
-from summarize import process_transcription, get_summary_bart, recursive_summarization
-from text_chunks import read_file, split_text_into_chunks
+from summarize import process_transcription
+from summarize_full import summarize_whole
 from transcribe import generate_transcription, split_transcription
 
 env_path = os.path.join(".env")
@@ -68,31 +67,8 @@ async def transcribe_summarize_video(
     summary = None
 
     if section_titles == [""]:
-        print(f"api: I assume a whole video since sections is empty: {section_titles}")
-        long_transcript = read_file(full_video_text_file)
-
-        if long_transcript:
-            # Split text into manageable chunks
-            text_chunks = split_text_into_chunks(long_transcript, max_tokens=4000)
-            logging.info(f"Text chunks: {text_chunks}")
-
-            # Generate summaries for each chunk
-            summary_full = get_summary_bart(text_chunks)
-
-            # If the summary is too long, apply another summarization pass
-            if len(summary_full.split()) > 5000:
-                # smaller_chunks = split_text_into_chunks(summary_full, max_tokens=1000)
-                # short_summary = get_summary_bart(smaller_chunks)
-                # summary = f"Section: Video Summary\nSummary: {short_summary}"
-                summary_full = recursive_summarization(summary_full)
-                summary = f"Section: Video Summary\nSummary: {summary_full}"
-            else:
-                summary = f"Section: Video Summary\nSummary: {summary_full}"
-
-            logging.info("Summary generation complete.")
-        else:
-            logging.error("Error: Unable to process the text.")
-        # summary = process_transcription(full_video_text_file)
+        print(f"api: I assume a whole video since sections is empty.")
+        summary = summarize_whole(full_video_text_file, output_folder)
     else:
         print(
             f"api: I assume video summarization should be split in sections: {section_titles}"
