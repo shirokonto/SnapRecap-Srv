@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 
 import requests
@@ -7,8 +8,9 @@ from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from header_detector import detect_section_headers
-from summarize import process_transcription
-from transcribe import process_video, split_transcription
+from summarize import process_transcription, get_summary_bart, recursive_summarization
+from text_chunks import read_file, split_text_into_chunks
+from transcribe import generate_transcription, split_transcription
 
 env_path = os.path.join(".env")
 load_dotenv(dotenv_path=env_path)
@@ -29,8 +31,10 @@ app.add_middleware(
 )
 
 
-@app.post("/transcribe")
-async def transcribe_video(file: UploadFile = File(...), sections: str = Form(...)):
+@app.post("/summarize")
+async def transcribe_summarize_video(
+    file: UploadFile = File(...), sections: str = Form(...)
+):
     video_path = f"temp_{file.filename}"
     with open(video_path, "wb") as f:
         f.write(await file.read())
@@ -39,17 +43,18 @@ async def transcribe_video(file: UploadFile = File(...), sections: str = Form(..
     output_folder = os.path.join("output", file.filename)
     os.makedirs(output_folder, exist_ok=True)
 
-    # decide if whole video or sections are given
+    # Decide if whole video or sections are given
     section_titles = json.loads(sections)
     print(f"Section titles: {section_titles}")
-
     full_video_text_file = None
     if section_titles == [""]:
-        transcription_file, full_video_text_file = process_video(
+        transcription_file, full_video_text_file = generate_transcription(
             video_path, output_folder
         )
     else:
-        transcription_file = process_video(video_path, output_folder, section_titles)
+        transcription_file = generate_transcription(
+            video_path, output_folder, section_titles
+        )
 
     # Reads content of the transcription file for output in UI
     with open(transcription_file, "r") as f:
@@ -60,9 +65,34 @@ async def transcribe_video(file: UploadFile = File(...), sections: str = Form(..
 
     transcription_chunks = split_transcription(subtitle_content)
 
+    summary = None
+
     if section_titles == [""]:
         print(f"api: I assume a whole video since sections is empty: {section_titles}")
-        summary = process_transcription(full_video_text_file)
+        long_transcript = read_file(full_video_text_file)
+
+        if long_transcript:
+            # Split text into manageable chunks
+            text_chunks = split_text_into_chunks(long_transcript, max_tokens=4000)
+            logging.info(f"Text chunks: {text_chunks}")
+
+            # Generate summaries for each chunk
+            summary_full = get_summary_bart(text_chunks)
+
+            # If the summary is too long, apply another summarization pass
+            if len(summary_full.split()) > 5000:
+                # smaller_chunks = split_text_into_chunks(summary_full, max_tokens=1000)
+                # short_summary = get_summary_bart(smaller_chunks)
+                # summary = f"Section: Video Summary\nSummary: {short_summary}"
+                summary_full = recursive_summarization(summary_full)
+                summary = f"Section: Video Summary\nSummary: {summary_full}"
+            else:
+                summary = f"Section: Video Summary\nSummary: {summary_full}"
+
+            logging.info("Summary generation complete.")
+        else:
+            logging.error("Error: Unable to process the text.")
+        # summary = process_transcription(full_video_text_file)
     else:
         print(
             f"api: I assume video summarization should be split in sections: {section_titles}"
@@ -81,7 +111,7 @@ async def transcribe_video(file: UploadFile = File(...), sections: str = Form(..
     }
 
 
-@app.post("/postonconfluence")
+@app.post("/post_to_confluence")
 async def create_confluence_page(
     parent_id: str = Form(...),
     title: str = Form(...),
@@ -124,7 +154,7 @@ async def create_confluence_page(
         raise HTTPException(status_code=500, detail=f"Error while creating page: {e}")
 
 
-@app.put("/updateonconfluence")
+@app.put("/update_on_confluence")
 async def update_confluence_page(
     title: str = Form(...),
     content: str = Form(...),
