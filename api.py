@@ -67,14 +67,11 @@ async def transcribe_summarize_video(
     summary = None
 
     if section_titles == [""]:
-        print(f"api: I assume a whole video since sections is empty.")
         summary = summarize_whole(full_video_text_file, output_folder)
     else:
-        print(
-            f"api: I assume video summarization should be split in sections: {section_titles}"
-        )
         detected_sections = detect_section_headers(transcription_chunks, section_titles)
-        print(f"header_detector: Detected sections: {detected_sections}")
+        print(f"api.py - section titles: {section_titles}")
+        print(f"header_detector - Detected sections: {detected_sections}")
 
         summary = process_transcription(
             transcription_file, sections=detected_sections

@@ -1,17 +1,4 @@
 def detect_section_headers(transcription_chunks, sections):
-    if not sections:
-        return detect_section_headers_without_sections(transcription_chunks)
-    else:
-        return detect_section_headers_with_sections(transcription_chunks, sections)
-
-
-def detect_section_headers_without_sections(transcription_chunks):
-    print(f"reaches: detect_section_headers_without_sections")
-    # TODO implement when no sections are provided
-    return {}
-
-
-def detect_section_headers_with_sections(transcription_chunks, sections):
     section_mapping = {section: [] for section in sections}
 
     # Assigns chunks sequentially to sections
