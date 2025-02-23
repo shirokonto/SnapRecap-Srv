@@ -10,7 +10,6 @@ from text_chunks import split_text_into_chunks, read_file
 
 # Download punkt tokenizer
 nltk.download("punkt")
-nltk.download("punkt_tab")
 
 # Load summarization pipeline
 device = 0 if torch.cuda.is_available() else -1  # Use GPU if available
@@ -67,8 +66,8 @@ def get_summary_bart(chunks: List[str]) -> str:
             summaries.append(summary)
         except Exception as e:
             logging.error(f"Error summarizing chunk {idx}: {e}")
-        print(f"Summaries: {summaries}")
-        return " ".join(summaries)
+    print(f"Summaries: {summaries}")
+    return " ".join(summaries)
 
 
 def save_summary_to_file(summary: str, file_name: str, output_folder: str) -> None:
