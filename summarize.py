@@ -4,14 +4,10 @@ from transformers import pipeline
 # Load summarization pipeline
 device = 0 if torch.cuda.is_available() else -1  # Use GPU if available
 summarizer = pipeline("summarization", model="facebook/bart-large-cnn", device=device)
+# summarizer = pipeline("summarization", model="t5-base", device=device)
 
 
-def detect_section_headers_one(transcription_file):
-    # TODO replace with header_detector
-    with open(
-        transcription_file, "r"
-    ) as file:  # TODO dont read just pass subtitle_content?
-        lines = file.readlines()
+def detect_section_headers_one(transcription_chunks):
 
     sections = []
     current_section = {"title": None, "content": ""}
@@ -27,28 +23,23 @@ def detect_section_headers_one(transcription_file):
         "Summary",
         "Getting started",
     ]
-    # TODO if sections are given use them
-    # TODO if keywords are given use them - else keyword extraction and search for similar ones
-    # TODO exclude stuff like "What is up"
 
-    # Process each line, skip timestamp lines
-    for line in lines:
-        stripped_line = line.strip()
-        if "-->" in stripped_line:
-            continue
+    # Process each chunk
+    for chunk in transcription_chunks:
+        text = chunk["text"].strip()
 
-        # Check if line matches any section keyword
-        if any(keyword in stripped_line for keyword in section_keywords):
+        # Check if text matches any section keyword
+        if any(keyword in text for keyword in section_keywords):
             # Save the current section if it exists
             if current_section["title"]:
                 sections.append(current_section)
 
             # Start a new section
-            current_section = {"title": stripped_line, "content": ""}
+            current_section = {"title": text, "content": ""}
 
         # Add content to the current section
         elif current_section["title"]:
-            current_section["content"] += stripped_line + " "
+            current_section["content"] += text + " "
 
     # Append the last section
     if current_section["title"]:
@@ -77,25 +68,44 @@ def summarize_section(section):
     return {"title": section["title"], "summary": summary}
 
 
-def process_transcription(transcription_file, sections=None):
+def sort_text_to_section_headers(transcription_chunks, section_titles):
+    # Initialize sections.
+    sections = [{"title": title, "content": ""} for title in section_titles]
+    current_section_index = 0
+
+    for chunk in transcription_chunks:
+        text = chunk["text"].strip()
+        if not text:
+            continue
+
+        # If there is a next section, check if this chunk signals its start.
+        if current_section_index < len(section_titles) - 1:
+            next_section_marker = section_titles[current_section_index + 1].lower()
+            if next_section_marker in text.lower():
+                current_section_index += 1
+
+        # Append chunk text to the current section's content.
+        sections[current_section_index]["content"] += text + " "
+
+    print(f"Sorted Sections: {sections}")
+    return sections
+
+
+def process_transcription(transcription_chunks, section_titles):
     """
     Main function to process the transcription file.
     Either summarize the whole video
     or detects sections, splits the text and summarizes each section.
     """
 
-    # Detect sections in the transcription
-    # sections = detect_section_headers(transcription_file)
-    sections = detect_section_headers_one(transcription_file)
+    sorted_sections = sort_text_to_section_headers(transcription_chunks, section_titles)
+    print("Assigned Sections:")
+    for sec in sorted_sections:
+        print(
+            f"Title: {sec['title']}, Content length: {len(sec['content'])} characters"
+        )
 
-    print(f"Results - Sections: {sections}")
-
-    # Summarize each section
-    summarized_sections = []
-    for section in sections:
-        summarized_section = summarize_section(section)
-        summarized_sections.append(summarized_section)
-
+    summarized_sections = [summarize_section(sec) for sec in sorted_sections]
     # Combine all summaries
     summary = "\n\n".join(
         f"Section: {s['title']}\nSummary: {s['summary']}" for s in summarized_sections
@@ -108,4 +118,5 @@ def process_transcription(transcription_file, sections=None):
 # Example usage
 if __name__ == "__main__":
     transcription_test_file = "example_transcription.srt"
-    process_transcription(transcription_test_file)
+    sct_titles = []
+    process_transcription(transcription_test_file, sct_titles)

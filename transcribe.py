@@ -126,9 +126,12 @@ def generate_subtitle_file(
 
 
 def split_transcription(transcription_file):
+    with open(transcription_file, "r") as f:
+        subtitle_content = f.read()
+
     # Regex to extract timestamps and text
     pattern = r"(\d+)\s+([\d:,]+) --> ([\d:,]+)\s+(.*?)(?=\n\d+\s+[\d:,]+ -->|\Z)"
-    matches = re.findall(pattern, transcription_file, re.DOTALL)
+    matches = re.findall(pattern, subtitle_content, re.DOTALL)
 
     transcription_chunks = []
     for match in matches:

@@ -1,23 +1,22 @@
 def detect_section_headers(transcription_chunks, sections):
     section_mapping = {section: [] for section in sections}
 
-    # Assigns chunks sequentially to sections
+    # Convert section titles for case-insensitive matching
+    lower_sections = [s.lower() for s in sections]
+
     current_section_idx = 0
 
     for chunk in transcription_chunks:
         idx = chunk["index"]
+        text = chunk["text"].lower()
 
-        # If it moves past the current section, switch to the next section
+        # Check if current chunk contains next section header
         if current_section_idx < len(sections) - 1:
-            next_section_start = [
-                i
-                for i, c in enumerate(transcription_chunks)
-                if sections[current_section_idx + 1].lower() in c["text"].lower()
-            ]
-            if next_section_start and idx >= next_section_start[0]:
+            next_section_title = lower_sections[current_section_idx + 1]
+            if next_section_title in text:
                 current_section_idx += 1
 
-        # Assigns the chunk to the current section
+        # Assign chunk to current section
         section_mapping[sections[current_section_idx]].append(idx)
 
     return section_mapping

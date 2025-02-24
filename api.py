@@ -6,7 +6,6 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from header_detector import detect_section_headers
 from summarize import process_transcription
 from summarize_full import summarize_whole
 from transcribe import generate_transcription, split_transcription
@@ -44,7 +43,7 @@ async def transcribe_summarize_video(
 
     # Decide if whole video or sections are given
     section_titles = json.loads(sections)
-    print(f"Section titles: {section_titles}")
+
     full_video_text_file = None
     if section_titles == [""]:
         transcription_file, full_video_text_file = generate_transcription(
@@ -55,27 +54,18 @@ async def transcribe_summarize_video(
             video_path, output_folder, section_titles
         )
 
-    # Reads content of the transcription file for output in UI
-    with open(transcription_file, "r") as f:
-        subtitle_content = f.read()
-
     # Removes temp video file after transcription
     os.remove(video_path)
 
-    transcription_chunks = split_transcription(subtitle_content)
+    transcription_chunks = split_transcription(transcription_file)
 
     summary = None
 
     if section_titles == [""]:
         summary = summarize_whole(full_video_text_file, output_folder)
     else:
-        detected_sections = detect_section_headers(transcription_chunks, section_titles)
         print(f"api.py - section titles: {section_titles}")
-        print(f"header_detector - Detected sections: {detected_sections}")
-
-        summary = process_transcription(
-            transcription_file, sections=detected_sections
-        )  # TODO don't use section titles
+        summary = process_transcription(transcription_chunks, section_titles)
 
     return {
         "file_name": os.path.basename(transcription_file),
