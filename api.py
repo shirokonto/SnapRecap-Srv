@@ -6,8 +6,9 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from summarize import process_transcription
+from file_util import write_to_binary_file, create_output_folder
 from summarize_full import summarize_whole
+from summarize_sections import process_transcription
 from transcribe import generate_transcription, split_transcription
 
 env_path = os.path.join(".env")
@@ -34,12 +35,9 @@ async def transcribe_summarize_video(
     file: UploadFile = File(...), sections: str = Form(...)
 ):
     video_path = f"temp_{file.filename}"
-    with open(video_path, "wb") as f:
-        f.write(await file.read())
+    await write_to_binary_file(video_path, file)
 
-    # Creates output folder for files
-    output_folder = os.path.join("output", file.filename)
-    os.makedirs(output_folder, exist_ok=True)
+    output_folder = create_output_folder(file.filename)
 
     # Decide if whole video or sections are given
     section_titles = json.loads(sections)

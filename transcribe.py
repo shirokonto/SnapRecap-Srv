@@ -6,6 +6,8 @@ import re
 import ffmpeg
 from faster_whisper import WhisperModel
 
+from file_util import read_file, write_to_file
+
 
 def check_cudnn_dll():
     """
@@ -109,25 +111,20 @@ def generate_subtitle_file(
         if sections is None:
             full_video_text += f"{segment.text} \n"
 
-    with open(subtitle_file, "w", encoding="utf-8") as f:
-        f.write(subtitle_text)
-        f.close()
+    write_to_file(subtitle_file, subtitle_text, mode="w")
 
     full_video_text_file = None
     if sections is None:
         full_video_text_file = os.path.join(
-            output_folder, f"only-text-{input_video_name}.{language}.srt"
+            output_folder, f"only-text-{input_video_name}.{language}.txt"
         )
-        with open(full_video_text_file, "w", encoding="utf-8") as f:
-            f.write(full_video_text)
-            f.close()
+        write_to_file(full_video_text_file, full_video_text, mode="w")
 
     return (subtitle_file, full_video_text_file) if sections is None else subtitle_file
 
 
 def split_transcription(transcription_file):
-    with open(transcription_file, "r") as f:
-        subtitle_content = f.read()
+    subtitle_content = read_file(transcription_file)
 
     # Regex to extract timestamps and text
     pattern = r"(\d+)\s+([\d:,]+) --> ([\d:,]+)\s+(.*?)(?=\n\d+\s+[\d:,]+ -->|\Z)"
@@ -158,6 +155,9 @@ def generate_transcription(input_video, output_folder, sections=None):
 
     audio_file = extract_audio(input_video, output_folder)
     language, segments = transcribe(audio=audio_file)
+
+    # Removes temp audio file after transcription
+    os.remove(audio_file)
 
     result = generate_subtitle_file(
         input_video_name=input_video_name,

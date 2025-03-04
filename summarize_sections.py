@@ -7,47 +7,6 @@ summarizer = pipeline("summarization", model="facebook/bart-large-cnn", device=d
 # summarizer = pipeline("summarization", model="t5-base", device=device)
 
 
-def detect_section_headers_one(transcription_chunks):
-
-    sections = []
-    current_section = {"title": None, "content": ""}
-
-    # Keywords indicate new sections
-    section_keywords = [
-        "What is",
-        "How does",
-        "Introduction",
-        "Overview",
-        "Conclusion",
-        "conclusion",
-        "Summary",
-        "Getting started",
-    ]
-
-    # Process each chunk
-    for chunk in transcription_chunks:
-        text = chunk["text"].strip()
-
-        # Check if text matches any section keyword
-        if any(keyword in text for keyword in section_keywords):
-            # Save the current section if it exists
-            if current_section["title"]:
-                sections.append(current_section)
-
-            # Start a new section
-            current_section = {"title": text, "content": ""}
-
-        # Add content to the current section
-        elif current_section["title"]:
-            current_section["content"] += text + " "
-
-    # Append the last section
-    if current_section["title"]:
-        sections.append(current_section)
-
-    return sections
-
-
 def summarize_section(section):
     """
     Summarizes the content of a given section using summarization pipeline.
@@ -69,8 +28,8 @@ def summarize_section(section):
 
 
 def sort_text_to_section_headers(transcription_chunks, section_titles):
-    # Initialize sections.
-    sections = [{"title": title, "content": ""} for title in section_titles]
+
+    sorted_sections = [{"title": title, "content": ""} for title in section_titles]
     current_section_index = 0
 
     for chunk in transcription_chunks:
@@ -84,11 +43,10 @@ def sort_text_to_section_headers(transcription_chunks, section_titles):
             if next_section_marker in text.lower():
                 current_section_index += 1
 
-        # Append chunk text to the current section's content.
-        sections[current_section_index]["content"] += text + " "
+        sorted_sections[current_section_index]["content"] += text + " "
 
-    print(f"Sorted Sections: {sections}")
-    return sections
+    print(f"Sorted Sections: {sorted_sections}")
+    return sorted_sections
 
 
 def process_transcription(transcription_chunks, section_titles):
@@ -111,7 +69,7 @@ def process_transcription(transcription_chunks, section_titles):
         f"Section: {s['title']}\nSummary: {s['summary']}" for s in summarized_sections
     )
 
-    print(f"END result: {summary}")
+    print(f"End result: {summary}")
     return summary
 
 

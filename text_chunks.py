@@ -6,18 +6,6 @@ import nltk
 nltk.download("punkt")
 
 
-def read_file(file_name: str) -> str:
-    try:
-        with open(file_name, "r", encoding="utf8") as file:
-            return file.read()
-    except FileNotFoundError as e:
-        logging.error(f"{e}: File '{file_name}' not found.")
-        return ""
-    except Exception as e:
-        logging.error(f"Error reading file: {e}")
-        return ""
-
-
 def split_text_into_chunks(document: str, max_tokens: int) -> List[str]:
     if not document:
         return []
